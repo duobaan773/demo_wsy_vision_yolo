@@ -1,3 +1,4 @@
+#include "detector.h"
 #include "input_handler.h"
 
 #include <opencv2/opencv.hpp>
@@ -9,17 +10,28 @@
 namespace
 {
 
+constexpr const char* DEFAULT_MODEL_PATH = "../models/best.onnx";
+
 void printUsage(const char* program_name)
 {
     std::cout
         << "Usage:\n"
-        << "  " << program_name << " image  <image_path>\n"
-        << "  " << program_name << " video  <video_path>\n"
-        << "  " << program_name << " camera [camera_id]\n\n"
+        << "  " << program_name
+        << " image  <image_path> [model_path]\n"
+        << "  " << program_name
+        << " video  <video_path> [model_path]\n"
+        << "  " << program_name
+        << " camera [camera_id]  [model_path]\n\n"
+
         << "Examples:\n"
-        << "  " << program_name << " image assets/test.jpg\n"
-        << "  " << program_name << " video assets/test.mp4\n"
-        << "  " << program_name << " camera 0\n";
+        << "  " << program_name
+        << " image assets/test.jpg\n"
+        << "  " << program_name
+        << " video assets/test.mp4\n"
+        << "  " << program_name
+        << " camera 0\n"
+        << "  " << program_name
+        << " image assets/test.jpg ../models/best.onnx\n";
 }
 
 bool openInputFromArguments(
@@ -84,6 +96,34 @@ bool openInputFromArguments(
     return false;
 }
 
+std::string getModelPathFromArguments(
+    int argc,
+    char* argv[])
+{
+    if (argc < 2)
+    {
+        return DEFAULT_MODEL_PATH;
+    }
+
+    const std::string mode = argv[1];
+
+    // image/video:
+    // rm_detect image path [model_path]
+    if ((mode == "image" || mode == "video") && argc >= 4)
+    {
+        return argv[3];
+    }
+
+    // camera:
+    // rm_detect camera camera_id [model_path]
+    if (mode == "camera" && argc >= 4)
+    {
+        return argv[3];
+    }
+
+    return DEFAULT_MODEL_PATH;
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -92,9 +132,29 @@ int main(int argc, char* argv[])
     std::cout << " RoboMaster 2027 Stage2 Detect System\n";
     std::cout << "========================================\n";
 
+    if (argc < 2)
+    {
+        printUsage(argv[0]);
+        return 1;
+    }
+
+    const std::string model_path =
+        getModelPathFromArguments(argc, argv);
+
+    Detector detector;
+
+    if (!detector.loadModel(model_path))
+    {
+        std::cerr << "[Main] Failed to initialize detector.\n";
+        return 1;
+    }
+
     InputHandler input_handler;
 
-    if (!openInputFromArguments(argc, argv, input_handler))
+    if (!openInputFromArguments(
+            argc,
+            argv,
+            input_handler))
     {
         printUsage(argv[0]);
         return 1;
@@ -105,18 +165,18 @@ int main(int argc, char* argv[])
     while (input_handler.readFrame(frame))
     {
         /*
-         * 后续最终处理链路插入在这里：
+         * 下一步将在这里加入：
          *
-         * 1. detector.detect(frame)
-         * 2. YOLO 后处理与 NMS
-         * 3. 计算所有装甲板中心点
-         * 4. visualizer.draw(...)
-         * 5. 显示 FPS、推理耗时和后处理耗时
+         * detector.detect(frame);
+         * YOLO 前处理与 forward();
+         * 后处理与 NMS;
+         * 装甲板中心点提取;
+         * 可视化与计时统计。
          */
 
         cv::putText(
             frame,
-            "Input OK",
+            "Model and Input OK",
             cv::Point(20, 40),
             cv::FONT_HERSHEY_SIMPLEX,
             1.0,
@@ -124,18 +184,22 @@ int main(int argc, char* argv[])
             2
         );
 
-        cv::imshow("RM Stage2 Detection", frame);
+        cv::imshow(
+            "RM Stage2 Detection",
+            frame
+        );
 
-        // 图片等待任意按键；视频和摄像头每帧等待 1 ms
         const int delay =
-            input_handler.getInputType() == InputHandler::InputType::Image
+            input_handler.getInputType()
+                    == InputHandler::InputType::Image
                 ? 0
                 : 1;
 
         const int key = cv::waitKey(delay);
 
-        // Esc 或 q 退出
-        if (key == 27 || key == 'q' || key == 'Q')
+        if (key == 27 ||
+            key == 'q' ||
+            key == 'Q')
         {
             break;
         }
