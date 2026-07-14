@@ -6,6 +6,7 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -164,26 +165,25 @@ int main(int argc, char* argv[])
 
     while (input_handler.readFrame(frame))
     {
-        /*
-         * 下一步将在这里加入：
-         *
-         * detector.detect(frame);
-         * YOLO 前处理与 forward();
-         * 后处理与 NMS;
-         * 装甲板中心点提取;
-         * 可视化与计时统计。
-         */
+       std::vector<cv::Mat> outputs;
 
-        cv::putText(
-            frame,
-            "Model and Input OK",
-            cv::Point(20, 40),
-            cv::FONT_HERSHEY_SIMPLEX,
-            1.0,
-            cv::Scalar(0, 255, 0),
-            2
-        );
+if (!detector.infer(frame, outputs))
+{
+    std::cerr << "[Main] Inference failed.\n";
+    break;
+}
 
+cv::putText(
+    frame,
+    "YOLO Inference OK",
+    cv::Point(20, 40),
+    cv::FONT_HERSHEY_SIMPLEX,
+    1.0,
+    cv::Scalar(0, 255, 0),
+    2
+);
+
+      
         cv::imshow(
             "RM Stage2 Detection",
             frame
