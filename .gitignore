@@ -1,22 +1,16 @@
-# 排除数据集文件，不要上传到仓库
-*.jpg
-*.jpeg
-*.png
-*.txt
-*.yaml
-data/
-datasets/
+# =========================
+# Python
+# =========================
 
-# 排除虚拟环境、缓存
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.env
-venv/
-env/
 
-# 排除日志、临时文件
-*.log
-*.tmp
-.idea/
+# YOLO训练结果
+runs/
+
+# IDE
+.vscode/
+
+# 系统文件
+.DS_Store
+Thumbs.db
