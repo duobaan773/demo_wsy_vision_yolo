@@ -1,5 +1,7 @@
 #include "detector.h"
 #include "input_handler.h"
+#include "visualizer.h"
+#include "timer.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -23,16 +25,15 @@ void printUsage(const char* program_name)
         << " video  <video_path> [model_path]\n"
         << "  " << program_name
         << " camera [camera_id]  [model_path]\n\n"
-
         << "Examples:\n"
         << "  " << program_name
-        << " image assets/test.jpg\n"
+        << " image assets/armor_test.jpg\n"
         << "  " << program_name
         << " video assets/test.mp4\n"
         << "  " << program_name
         << " camera 0\n"
         << "  " << program_name
-        << " image assets/test.jpg ../models/best.onnx\n";
+        << " image assets/armor_test.jpg ../models/best.onnx\n";
 }
 
 bool openInputFromArguments(
@@ -108,15 +109,11 @@ std::string getModelPathFromArguments(
 
     const std::string mode = argv[1];
 
-    // image/video:
-    // rm_detect image path [model_path]
     if ((mode == "image" || mode == "video") && argc >= 4)
     {
         return argv[3];
     }
 
-    // camera:
-    // rm_detect camera camera_id [model_path]
     if (mode == "camera" && argc >= 4)
     {
         return argv[3];
@@ -161,29 +158,73 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    Visualizer visualizer;
+    Timer timer;
     cv::Mat frame;
+    
 
     while (input_handler.readFrame(frame))
-    {
-       std::vector<cv::Mat> outputs;
+    {   timer.start();
+        std::vector<Detection> detections;
 
-if (!detector.infer(frame, outputs))
-{
-    std::cerr << "[Main] Inference failed.\n";
-    break;
-}
+        if (!detector.detect(frame, detections))
+        {
+            std::cerr << "[Main] Detection failed.\n";
+            break;
+        }
+        timer.stop();
 
-cv::putText(
-    frame,
-    "YOLO Inference OK",
-    cv::Point(20, 40),
-    cv::FONT_HERSHEY_SIMPLEX,
-    1.0,
-    cv::Scalar(0, 255, 0),
-    2
+        std::cout
+    << "[Main] Detection count: "
+    << detections.size()
+    << ", FPS: "
+    << timer.getFPS()
+    << ", Infer: "
+    << detector.getInferenceTimeMs()
+    << " ms"
+    << ", Post: "
+    << detector.getPostprocessTimeMs()
+    << " ms\n";
+
+        const std::vector<std::string>& class_names =
+            detector.getClassNames();
+
+        for (std::size_t index = 0;
+             index < detections.size();
+             ++index)
+        {
+            const Detection& detection =
+                detections[index];
+
+            std::cout
+                << "[Detection " << index << "] "
+                << "class="
+                << class_names.at(detection.class_id)
+                << ", confidence="
+                << detection.confidence
+                << ", box=("
+                << detection.box.x << ", "
+                << detection.box.y << ", "
+                << detection.box.width << ", "
+                << detection.box.height << ")"
+                << ", center=("
+                << detection.center.x << ", "
+                << detection.center.y << ")"
+                << '\n';
+        }
+        visualizer.drawPerformance(
+          frame,
+          timer.getFPS(),
+          timer.getAverageFPS(),
+          detector.getInferenceTimeMs(),
+          detector.getPostprocessTimeMs()
 );
+        visualizer.drawDetections(
+            frame,
+            detections,
+            class_names
+        );
 
-      
         cv::imshow(
             "RM Stage2 Detection",
             frame
@@ -195,7 +236,8 @@ cv::putText(
                 ? 0
                 : 1;
 
-        const int key = cv::waitKey(delay);
+        const int key =
+            cv::waitKey(delay);
 
         if (key == 27 ||
             key == 'q' ||
