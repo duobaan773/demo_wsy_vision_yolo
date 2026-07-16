@@ -150,3 +150,16 @@ bool InputHandler::isOpened() const
         return false;
     }
 }
+double InputHandler::getSourceFPS() const
+{
+    if (input_type_ == InputType::Video &&
+        capture_.isOpened())
+    {
+        const double fps =
+            capture_.get(cv::CAP_PROP_FPS);
+
+        return fps > 0.0 ? fps : 30.0;
+    }
+
+    return 30.0;
+}

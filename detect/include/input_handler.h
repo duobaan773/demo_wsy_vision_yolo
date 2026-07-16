@@ -8,6 +8,7 @@
 class InputHandler
 {
 public:
+    double getSourceFPS() const;
     enum class InputType
     {
         None,

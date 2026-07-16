@@ -667,21 +667,7 @@ bool Detector::detect(
 
     return postprocess_success;
 }
-{
-    detections.clear();
 
-    std::vector<cv::Mat> outputs;
-
-    if (!infer(image, outputs))
-    {
-        return false;
-    }
-
-    return postprocess(
-        outputs,
-        detections
-    );
-}
 
 void Detector::printOutputShapes(
     const std::vector<cv::Mat>& outputs
