@@ -85,7 +85,7 @@ private:
     int input_height_ = 1024;
 
     // 置信度和 NMS 阈值
-    float confidence_threshold_ = 0.50F;
+    float confidence_threshold_ = 0.5F;
     float nms_threshold_ = 0.45F;
 
     PreprocessInfo preprocess_info_;
